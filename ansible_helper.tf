@@ -2,21 +2,21 @@
 resource "local_file" "ansible_inventory" {
     content = templatefile("${path.root}/templates/inventry.tftpl",
         {
-            masters-dns = aws_instance.masters.*.private_dns,
-            masters-ip  = aws_instance.masters.*.private_ip,
-            masters-id  = aws_instance.masters.*.id,
-            workers-dns = aws_instance.workers.*.private_dns,
-            workers-ip  = aws_instance.workers.*.private_ip,
-            workers-id  = aws_instance.workers.*.id
+            master-dns = aws_instance.master.*.private_dns,
+            master-ip  = aws_instance.master.*.private_ip,
+            master-id  = aws_instance.master.*.id,
+            worker-dns = aws_instance.worker.*.private_dns,
+            worker-ip  = aws_instance.worker.*.private_ip,
+            worker-id  = aws_instance.worker.*.id
         }    
     )
     filename = "${path.root}/inventory"
 }
 
-# wating for bastion server user data init.
+# wating for master server user data init.
 # TODO: Need to switch to signaling based solution instead of waiting. 
-resource "time_sleep" "wait_for_bastion_init" {
-  depends_on = [aws_instance.bastion]
+resource "time_sleep" "wait_for_master_init" {
+  depends_on = [aws_instance.master]
 
   create_duration = "120s"
 
@@ -29,8 +29,8 @@ resource "time_sleep" "wait_for_bastion_init" {
 resource "null_resource" "provisioner" {
   depends_on    = [
     local_file.ansible_inventory,
-    time_sleep.wait_for_bastion_init,
-    aws_instance.bastion
+    time_sleep.wait_for_master_init,
+    aws_instance.master
     ]
 
   triggers = {
@@ -38,12 +38,12 @@ resource "null_resource" "provisioner" {
   }
 
   provisioner "file" {
-    source  = "${path.root}/inventory"
+    source  = "inventory"
     destination = "/home/ubuntu/inventory"
 
     connection {
       type          = "ssh"
-      host          = aws_instance.bastion.public_ip
+      host          = aws_instance.master.public_ip
       user          = var.ssh_user
       private_key   = tls_private_key.ssh.private_key_pem
       agent         = false
@@ -55,7 +55,6 @@ resource "null_resource" "provisioner" {
 resource "local_file" "ansible_vars_file" {
     content = <<-DOC
 
-        master_lb: ${aws_lb.k8_masters_lb.dns_name}
         DOC
     filename = "ansible/ansible_vars_file.yml"
 }
@@ -63,8 +62,8 @@ resource "local_file" "ansible_vars_file" {
 resource "null_resource" "copy_ansible_playbooks" {
   depends_on    = [
     null_resource.provisioner,
-    time_sleep.wait_for_bastion_init,
-    aws_instance.bastion,
+    time_sleep.wait_for_master_init,
+    aws_instance.master,
     local_file.ansible_vars_file
     ]
 
@@ -78,7 +77,7 @@ resource "null_resource" "copy_ansible_playbooks" {
 
       connection {
         type        = "ssh"
-        host        = aws_instance.bastion.public_ip
+        host        = aws_instance.master.public_ip
         user        = var.ssh_user
         private_key = tls_private_key.ssh.private_key_pem
         insecure    = true
@@ -92,11 +91,11 @@ resource "null_resource" "run_ansible" {
   depends_on = [
     null_resource.provisioner,
     null_resource.copy_ansible_playbooks,
-    aws_instance.masters,
-    aws_instance.workers,
+    aws_instance.master,
+    aws_instance.worker,
     module.vpc,
-    aws_instance.bastion,
-    time_sleep.wait_for_bastion_init
+    aws_instance.master,
+    time_sleep.wait_for_master_init
   ]
 
   triggers = {
@@ -105,9 +104,10 @@ resource "null_resource" "run_ansible" {
 
   connection {
     type        = "ssh"
-    host        = aws_instance.bastion.public_ip
+    host        = aws_instance.master.public_ip
     user        = var.ssh_user
     private_key = tls_private_key.ssh.private_key_pem
+  # private_key = aws_key_pair.k8_ssh.key_name
     insecure    = true
     agent         = false
   }
@@ -115,7 +115,7 @@ resource "null_resource" "run_ansible" {
   provisioner "remote-exec" {
     inline = [
       "echo 'starting ansible playbooks...'",
-      "sleep 60 && ansible-playbook -i /home/ubuntu/inventory /home/ubuntu/ansible/play.yml ",
+      "sleep 60 && ansible-playbook -i inventory ansible/play.yml ",
     ] 
   }
 }

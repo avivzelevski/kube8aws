@@ -92,7 +92,7 @@
 ##
 
 ### Master Node Configurations
-- hosts: masters_first
+- hosts: master_first
   become: yes
   vars_files:
     - ansible_vars_file.yml
@@ -166,7 +166,7 @@
 
 #### Configure other master nodes
 
-- hosts: masters_others
+- hosts: master_others
   become: yes
   tasks:
    - name: Kubectl Install
@@ -215,7 +215,7 @@
 ####
 
 ##### Worker Node Configurations
-- hosts: workers
+- hosts: worker
   become: yes
   tasks:
     - name: Copy the worker join command to server location

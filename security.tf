@@ -9,19 +9,19 @@ resource "aws_security_group" "allow_ssh" {
         protocol    = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
     }
-    ingress {
-        from_port   = -1
-        to_port     = -1
-        protocol    = "icmp"
-        cidr_blocks = ["0.0.0.0/0"]
-    }
+    # ingress {
+    #     from_port   = -1
+    #     to_port     = -1
+    #     protocol    = "icmp"
+    #     cidr_blocks = ["0.0.0.0/0"]
+    # }
 
-    egress {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        cidr_blocks = ["0.0.0.0/0"]
-    }
+    # egress {
+    #     from_port   = 0
+    #     to_port     = 0
+    #     protocol    = "-1"
+    #     cidr_blocks = ["0.0.0.0/0"]
+    # }
 }
 
 resource "aws_security_group" "k8_nondes" {
@@ -36,24 +36,24 @@ resource "aws_security_group" "k8_nondes" {
         cidr_blocks = ["${var.vpc_cidr}"]
     }
 
-    ingress {
-        from_port   = -1
-        to_port     = -1
-        protocol    = "icmp"
-        cidr_blocks = ["${var.vpc_cidr}"]
-    }
+    # ingress {
+    #     from_port   = -1
+    #     to_port     = -1
+    #     protocol    = "icmp"
+    #     cidr_blocks = ["${var.vpc_cidr}"]
+    # }
 
-    egress {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        cidr_blocks = ["0.0.0.0/0"]
-    }
+    # egress {
+    #     from_port   = 0
+    #     to_port     = 0
+    #     protocol    = "-1"
+    #     cidr_blocks = ["0.0.0.0/0"]
+    # }
   
 }
 
-resource "aws_security_group" "k8_masters" {
-    name = "k8_masters"
+resource "aws_security_group" "k8_master" {
+    name = "k8_master"
     description = "sec group for k8 master nodes"
     vpc_id = module.vpc.vpc_id
 
@@ -99,8 +99,8 @@ resource "aws_security_group" "k8_masters" {
   
 }
 
-resource "aws_security_group" "k8_workers" {
-    name = "k8_workers"
+resource "aws_security_group" "k8_worker" {
+    name = "k8_worker"
     description = "sec group for k8 worker nodes"
     vpc_id = module.vpc.vpc_id
 
